@@ -1,13 +1,15 @@
 define unicorn::instance(
   $basedir,
-  $worker_processes = 4,
+  $config_file = '',
+  $pid_file = '',
+  $logdir = '',
+  $worker_processes = $::processorcount,
   $socket_path = false,
   $socket_backlog = 64,
   $port = false,
   $tcp_nopush = true,
   $timeout_secs = 60,
-  $preload_app = true,
-  $rails = false,
+  $preload_app = false,
   $rolling_restarts = true,
   $rolling_restarts_sleep = 1,
   $debug_base_port = false,
@@ -19,54 +21,38 @@ define unicorn::instance(
   $env = 'production',
   $uid = 'root',
   $gid = 'root',
-  $monit_extras = ''
 ) {
+  include unicorn
 
-  $real_command = $rails ? {
-    true  => "${command}_rails",
-    false => $command
+  $r_pidfile = $pidfile ? {
+    ''      => "${basedir}/${title}_unicorn.pid",
+    default => $pidfile,
   }
 
-  file {
-    "${name}_unicorn.conf":
-      path    => "${basedir}/shared/config/unicorn.conf.rb",
+  $r_logdir = $logdir ? {
+    ''      => $basedir,
+    default => $logdir,
+  }
+
+  $r_config_file = $config_file ? {
+    ''      => "${basedir}/unicorn.conf",
+    default => $config_file,
+  }
+
+  file { $r_config_file:
       mode    => 644,
       owner   => $uid,
       group   => $gid,
       content => template('unicorn/unicorn.conf.erb');
   }
 
-  $process_name = $name
-  if $::use_monit {
-    $check_socket = $socket_path ? {
-      false   => '',
-      default => "if failed unixsocket ${socket_path} then restart"
-    }
-
-    $check_port = $port ? {
-      false   => '',
-      default => "if failed host localhost port ${port}\n    protocol HTTP request \"/monit_test\"\n    with timeout ${timeout_secs}\n    then restart"
-    }
-
-    monit::check::process {
-      "${process_name}_unicorn":
-        pidfile => "$basedir/shared/pids/unicorn.pid",
-        start   => "/bin/sh -c '$real_command -E $env -c $basedir/shared/config/unicorn.conf.rb -D'",
-        start_extras => "as uid $uid and gid $gid",
-        stop    => "/bin/sh -c 'kill `cat $basedir/shared/pids/unicorn.pid`'",
-        customlines => [$check_socket, $check_port, $monit_extras, "group ${process_name}_unicorn"];
-    }
-  }
-  else {
-    service {
-      "${process_name}_unicorn":
-        provider  => 'base',
-        start     => "$real_command -E $env -c $basedir/shared/config/unicorn.conf.rb -D",
-        stop      => "kill `cat $basedir/shared/pids/unicorn.pid`",
-        restart   => "kill -s USR2 `cat $basedir/shared/pids/unicorn.pid`",
-        status    => "ps -o pid= -o comm= -p `cat $basedir/shared/pids/unicorn.pid`",
-        ensure    => 'running',
-        subscribe => File["${name}_unicorn.conf"];
-    }
+  service { "${name}_unicorn":
+      provider  => 'base',
+      start     => "${command} -E ${env} -c ${r_config_file} -D",
+      stop      => "kill `cat ${r_pidfile}`",
+      restart   => "kill -s USR2 `cat ${r_pidfile}`",
+      status    => "ps -o pid= -o comm= -p `cat ${r_pidfile}`",
+      ensure    => 'running',
+      subscribe => File[$r_config_file];
   }
 }

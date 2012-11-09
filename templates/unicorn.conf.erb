@@ -1,8 +1,8 @@
-<% require_extras.each do |line| -%>
+<% @require_extras.each do |line| -%>
 require <%= line %>
 <% end -%>
 
-# Configuration snippet for <%= name %>
+# Configuration snippet for <%= @name %>
 # 
 # This file is handled by puppet, all local modifications will be lost
 
@@ -12,33 +12,33 @@ require <%= line %>
 
 # Use at least one worker per core if you're on a dedicated server,
 # more will usually help for _short_ waits on databases/caches.
-worker_processes <%= worker_processes %>
+worker_processes <%= @worker_processes %>
 
 # Help ensure your application will always spawn in the symlinked
 # "current" directory that Capistrano sets up.
-working_directory "<%= basedir + '/current' %>"
+working_directory "<%= @basedir %>"
 
-<% if socket_path then -%>
+<% if @socket_path then -%>
 # Unix domain socket
-listen "<%= socket_path %>", :backlog => <%= socket_backlog %>
+listen "<%= socket_path %>", :backlog => <%= @socket_backlog %>
 <% end -%>
 
 <% if port then -%>
 # TCP port
-listen <%= port %>, :tcp_nopush => <%= tcp_nopush %>
+listen <%= @port %>, :tcp_nopush => <%= @tcp_nopush %>
 <% end -%>
 
 # nuke workers after timeout
-timeout <%= timeout_secs %>
+timeout <%= @timeout_secs %>
 
 # Save the pid somewhere
-pid "<%= basedir + '/shared/pids/unicorn.pid' %>"
+pid "<%= @r_pidfile %>"
 
 # By default, the Unicorn logger will write to stderr.
 # Additionally, ome applications/frameworks log to stderr or stdout,
 # so prevent them from going to /dev/null when daemonized here:
-stderr_path "<%= basedir + '/shared/log/unicorn.stderr.log' %>"
-stdout_path "<%= basedir + '/shared/log/unicorn.stdout.log' %>"
+stderr_path "<%= "#{@r_logdir}/unicorn.stderr.log" %>"
+stdout_path "<%= "#{@r_logdir}/unicorn.stdout.log" %>"
 
 <% if preload_app == true then -%>
 # combine REE with "preload_app true" for memory savings
