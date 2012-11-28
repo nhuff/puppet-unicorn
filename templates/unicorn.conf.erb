@@ -44,8 +44,6 @@ stdout_path "<%= "#{@r_logdir}/unicorn.stdout.log" %>"
 # combine REE with "preload_app true" for memory savings
 # http://rubyenterpriseedition.com/faq.html#adapt_apps_for_cow
 preload_app true
-GC.respond_to?(:copy_on_write_friendly=) and
-  GC.copy_on_write_friendly = true
 <% end -%>
 
 <% if before_exec.any? -%>
@@ -57,11 +55,6 @@ end
 <% end -%>
 
 before_fork do |server, worker|
-<% if preload_app == true and rails == true then -%>
-  # there's no need for the master process to hold a connection
-  defined?(ActiveRecord::Base) and
-    ActiveRecord::Base.connection.disconnect!
-<% end -%>
 
 <% if rolling_restarts == true -%>
   # This allows a new master process to incrementally
@@ -95,12 +88,6 @@ after_fork do |server, worker|
   # per-process listener ports for debugging/admin/migrations
   addr = "127.0.0.1:#{<%= debug_base_port %> + worker.nr}"
   server.listen(addr, :tries => -1, :delay => 5, :tcp_nopush => true)
-<% end -%>
-
-<% if preload_app == true and rails == true then -%>
-  # the following is *required* for Rails + "preload_app true",
-  defined?(ActiveRecord::Base) and
-    ActiveRecord::Base.establish_connection
 <% end -%>
 
 <% after_fork_extras.each do |line| -%>
