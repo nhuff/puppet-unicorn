@@ -53,6 +53,7 @@ define unicorn::instance(
       restart   => "kill -s USR2 `cat ${r_pidfile}`",
       status    => "ps -o pid= -o comm= -p `cat ${r_pidfile}`",
       ensure    => 'running',
-      subscribe => File[$r_config_file];
+      subscribe => File[$r_config_file],
+      require   => Package['rubygem-unicorn'],
   }
 }
